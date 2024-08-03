@@ -1,4 +1,5 @@
 use macroquad::{prelude::*, ui::{root_ui, widgets::Button}};
+use ::rand::{thread_rng, Rng};
 
 struct BoardSetting {
   rows: u8,
@@ -40,20 +41,59 @@ type Board = Vec<Vec<Tile>>;
 
 const BUTTON_SIZE: f32 = 26.;
 const BUTTON_HALF_SIZE: f32 = BUTTON_SIZE / 2.;
-const PADDING: f32 = BUTTON_SIZE + 1.;
+const PADDING: f32 = BUTTON_SIZE + 0.;
+
+fn generate_board(settings: &BoardSetting) -> Board {
+  let mut board = vec![vec![
+    Tile {
+      tile_type: TileType::Empty,
+      state: TileState::Hidden,
+    }; settings.cols as usize]; settings.rows as usize];
+
+  let mut rng = thread_rng();
+
+  let mut mines_placed = 0;
+  while mines_placed < settings.mines {
+    let row = rng.gen_range(0..settings.rows);
+    let col = rng.gen_range(0..settings.cols);
+
+    if board[row as usize][col as usize].tile_type != TileType::Mine {
+      board[row as usize][col as usize].tile_type = TileType::Mine;
+      mines_placed += 1;
+    }
+  }
+
+  for row in 0..settings.rows {
+    for col in 0..settings.cols {
+      if board[row as usize][col as usize].tile_type == TileType::Mine {
+        continue;
+      }
+
+      let mut mine_count = 0;
+      for i in -1..=1 {
+        for j in -1..=1 {
+          let new_row = row as i32 + i;
+          let new_col = col as i32 + j;
+
+          if new_row >= 0 && new_row < settings.rows as i32 && new_col >= 0 && new_col < settings.cols as i32 {
+            if board[new_row as usize][new_col as usize].tile_type == TileType::Mine {
+              mine_count += 1;
+            }
+          }
+        }
+      }
+
+      board[row as usize][col as usize].tile_type = TileType::Number(mine_count);
+    }
+  }
+
+  board
+}
 
 #[macroquad::main("Minesweeper")]
 async fn main() {
   let settings = get_settings().await;
-  let mut board = vec![
-    vec![
-      Tile {
-        tile_type: TileType::Empty,
-        state: TileState::Hidden,
-      }; settings.cols as usize
-    ]; 
-    settings.rows as usize
-  ];
+  let mut board = generate_board(&settings);
 
   loop {
     handle_click(&mut board);
