@@ -57,34 +57,24 @@ fn generate_board(settings: &BoardSetting) -> Board {
     let row = rng.gen_range(0..settings.rows);
     let col = rng.gen_range(0..settings.cols);
 
-    if board[row as usize][col as usize].tile_type != TileType::Mine {
-      board[row as usize][col as usize].tile_type = TileType::Mine;
+    if board[col as usize][row as usize].tile_type != TileType::Mine {
+      board[col as usize][row as usize].tile_type = TileType::Mine;
       mines_placed += 1;
     }
   }
 
-  for row in 0..settings.rows {
-    for col in 0..settings.cols {
-      if board[row as usize][col as usize].tile_type == TileType::Mine {
+  for row in 0..settings.rows as usize {
+    for col in 0..settings.cols as usize {
+      if board[col][row].tile_type == TileType::Mine {
         continue;
       }
 
-      let mut mine_count = 0;
-      for i in -1..=1 {
-        for j in -1..=1 {
-          let new_row = row as i32 + i;
-          let new_col = col as i32 + j;
-
-          if new_row >= 0 && new_row < settings.rows as i32 && new_col >= 0 && new_col < settings.cols as i32 {
-            if board[new_row as usize][new_col as usize].tile_type == TileType::Mine {
-              mine_count += 1;
-            }
-          }
-        }
-      }
+      let mine_count = loop_surrounding_tiles(&board, row, col)
+        .filter(|(x, y)| board[*y][*x].tile_type == TileType::Mine)
+        .count();
 
       if mine_count > 0 {
-        board[row as usize][col as usize].tile_type = TileType::Number(mine_count);
+        board[col as usize][row as usize].tile_type = TileType::Number(mine_count as u32);
       }
     }
   }
@@ -163,26 +153,46 @@ fn handle_click(board: &mut Board) {
 }
 
 fn reveal_tile(board: &mut Board, x: usize, y: usize) {
+  let both_down = is_mouse_button_down(MouseButton::Left) && is_mouse_button_down(MouseButton::Right);
+
   if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
-    if tile.state != TileState::Hidden {
+    if tile.state == TileState::Flagged {
+      return;
+    }
+
+    if tile.state == TileState::Revealed {
+      if !both_down {
+        return;
+      }
+
+      //reveal all adjacent tiles if the number of flags around the tile is equal to the number on the tile
       return;
     }
 
     tile.state = TileState::Revealed;
 
     if tile.tile_type == TileType::Empty {
-      for i in -1..=1 {
-        for j in -1..=1 {
-          let new_x = x as i32 + i;
-          let new_y = y as i32 + j;
+      loop_surrounding_tiles(board, x, y).for_each(|(x, y)| reveal_tile(board, x, y));
+    }
+  }
+}
 
-          if new_x >= 0 && new_x < board[0].len() as i32 && new_y >= 0 && new_y < board.len() as i32 {
-            reveal_tile(board, new_x as usize, new_y as usize);
-          }
-        }
+fn loop_surrounding_tiles(board: &Board, x: usize, y: usize) -> impl Iterator<Item = (usize, usize)>{
+  let mut tile_pos = Vec::new();
+  let width = board[0].len();
+  let height = board.len();
+  for i in -1..=1 {
+    for j in -1..=1 {
+      let new_x = x as i32 + i;
+      let new_y = y as i32 + j;
+
+      if new_x >= 0 && new_x < width as i32 && new_y >= 0 && new_y < height as i32 {
+        tile_pos.push((new_x as usize, new_y as usize));
       }
     }
   }
+
+  tile_pos.into_iter()
 }
 
 fn draw_difficulty_button(label: &str, y_pos: f32) -> bool {
