@@ -83,7 +83,9 @@ fn generate_board(settings: &BoardSetting) -> Board {
         }
       }
 
-      board[row as usize][col as usize].tile_type = TileType::Number(mine_count);
+      if mine_count > 0 {
+        board[row as usize][col as usize].tile_type = TileType::Number(mine_count);
+      }
     }
   }
 
@@ -149,13 +151,36 @@ fn handle_click(board: &mut Board) {
   let (mouse_x, mouse_y) = mouse_position();
   let x = (mouse_x / PADDING) as usize;
   let y = (mouse_y / PADDING) as usize;
+  if left_click {
+    reveal_tile(board, x, y);
+  }
+
   if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
-    if left_click && tile.state == TileState::Hidden {
-      tile.state = TileState::Revealed;
-    } 
-    
     if right_click && tile.state != TileState::Revealed {
       tile.state = if tile.state == TileState::Hidden { TileState::Flagged } else { TileState::Hidden };
+    }
+  }
+}
+
+fn reveal_tile(board: &mut Board, x: usize, y: usize) {
+  if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
+    if tile.state != TileState::Hidden {
+      return;
+    }
+
+    tile.state = TileState::Revealed;
+
+    if tile.tile_type == TileType::Empty {
+      for i in -1..=1 {
+        for j in -1..=1 {
+          let new_x = x as i32 + i;
+          let new_y = y as i32 + j;
+
+          if new_x >= 0 && new_x < board[0].len() as i32 && new_y >= 0 && new_y < board.len() as i32 {
+            reveal_tile(board, new_x as usize, new_y as usize);
+          }
+        }
+      }
     }
   }
 }
