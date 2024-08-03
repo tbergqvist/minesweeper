@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 use macroquad::{prelude::*, ui::{root_ui, widgets::Button}};
 use ::rand::{thread_rng, Rng};
 
@@ -142,7 +144,8 @@ fn handle_click(board: &mut Board) {
   let x = (mouse_x / PADDING) as usize;
   let y = (mouse_y / PADDING) as usize;
   if left_click {
-    reveal_tile(board, x, y);
+    let both_down = (is_mouse_button_down(MouseButton::Left) || is_mouse_button_released(MouseButton::Left)) && (is_mouse_button_down(MouseButton::Right) || is_mouse_button_released(MouseButton::Right));
+    reveal_tile(board, x, y, both_down);
   }
 
   if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
@@ -152,9 +155,7 @@ fn handle_click(board: &mut Board) {
   }
 }
 
-fn reveal_tile(board: &mut Board, x: usize, y: usize) {
-  let both_down = is_mouse_button_down(MouseButton::Left) && is_mouse_button_down(MouseButton::Right);
-
+fn reveal_tile(board: &mut Board, x: usize, y: usize, both_down: bool) {
   if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
     if tile.state == TileState::Flagged {
       return;
@@ -165,14 +166,22 @@ fn reveal_tile(board: &mut Board, x: usize, y: usize) {
         return;
       }
 
-      //reveal all adjacent tiles if the number of flags around the tile is equal to the number on the tile
+      if let TileType::Number(surrounding_mines) = tile.tile_type {
+        let flags_around = loop_surrounding_tiles(board, x, y).filter(|(x, y)| board[*y][*x].state == TileState::Flagged).count();
+        if surrounding_mines <= flags_around as u32 {
+          loop_surrounding_tiles(board, x, y)
+          .for_each(|(x, y)| reveal_tile(board, x, y, false));
+          return;
+        }
+      }
+
       return;
     }
 
     tile.state = TileState::Revealed;
 
     if tile.tile_type == TileType::Empty {
-      loop_surrounding_tiles(board, x, y).for_each(|(x, y)| reveal_tile(board, x, y));
+      loop_surrounding_tiles(board, x, y).for_each(|(x, y)| reveal_tile(board, x, y, false));
     }
   }
 }
