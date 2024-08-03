@@ -150,17 +150,14 @@ fn handle_click(board: &mut Board) {
   let x = (mouse_x / PADDING) as usize;
   let y = (mouse_y / PADDING) as usize;
   if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
-    if left_click {
+    if left_click && tile.state == TileState::Hidden {
       tile.state = TileState::Revealed;
-    } else if right_click {
-      tile.state = match tile.state {
-        TileState::Hidden => TileState::Flagged,
-        TileState::Flagged => TileState::Hidden,
-        TileState::Revealed => TileState::Revealed,
-      }
+    } 
+    
+    if right_click && tile.state != TileState::Revealed {
+      tile.state = if tile.state == TileState::Hidden { TileState::Flagged } else { TileState::Hidden };
     }
   }
-  
 }
 
 fn draw_difficulty_button(label: &str, y_pos: f32) -> bool {
