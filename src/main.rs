@@ -1,6 +1,7 @@
 #![feature(let_chains)]
 
 use macroquad::{prelude::*, ui::{root_ui, widgets::Button}};
+use miniquad::window::set_window_size;
 use ::rand::{thread_rng, Rng};
 
 struct BoardSetting {
@@ -89,6 +90,7 @@ async fn main() {
   let settings = get_settings().await;
   let mut board = generate_board(&settings);
 
+  set_window_size(settings.cols as u32 * BUTTON_SIZE as u32, settings.rows as u32 * BUTTON_SIZE as u32);
   loop {
     handle_click(&mut board);
 
