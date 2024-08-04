@@ -143,14 +143,17 @@ fn handle_click(board: &mut Board) {
   let (mouse_x, mouse_y) = mouse_position();
   let x = (mouse_x / PADDING) as usize;
   let y = (mouse_y / PADDING) as usize;
-  if left_click {
-    let both_down = (is_mouse_button_down(MouseButton::Left) || is_mouse_button_released(MouseButton::Left)) && (is_mouse_button_down(MouseButton::Right) || is_mouse_button_released(MouseButton::Right));
-    reveal_tile(board, x, y, both_down);
-  }
+  let both_down = (is_mouse_button_down(MouseButton::Left) || is_mouse_button_released(MouseButton::Left)) && (is_mouse_button_down(MouseButton::Right) || is_mouse_button_released(MouseButton::Right));
 
-  if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
-    if right_click && tile.state != TileState::Revealed {
-      tile.state = if tile.state == TileState::Hidden { TileState::Flagged } else { TileState::Hidden };
+  if left_click {
+    reveal_tile(board, x, y, both_down);
+  } else if right_click {
+    if let Some(tile) = board.get_mut(y).and_then(|row| row.get_mut(x)) {
+      if tile.state == TileState::Revealed {
+        reveal_tile(board, x, y, both_down);
+      } else {
+        tile.state = if tile.state == TileState::Hidden { TileState::Flagged } else { TileState::Hidden };
+      }
     }
   }
 }
