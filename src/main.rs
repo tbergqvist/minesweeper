@@ -1,7 +1,7 @@
 #![feature(let_chains)]
 
 use macroquad::{prelude::*, ui::{root_ui, widgets::Button}};
-use miniquad::window::set_window_size;
+use miniquad::window::{get_window_position, set_window_position, set_window_size};
 use ::rand::{thread_rng, Rng};
 
 struct BoardSetting {
@@ -86,12 +86,22 @@ fn generate_board(settings: &BoardSetting) -> Board {
   board
 }
 
+fn resize_window(settings: &BoardSetting) {
+  let original_screen_size = (screen_width(), screen_height());
+  let new_screen_size = (settings.cols as f32 * BUTTON_SIZE, settings.rows as f32 * BUTTON_SIZE);
+  let original_window_position = get_window_position();
+  let screen_size_diff = (original_screen_size.0 - new_screen_size.0, original_screen_size.1 - new_screen_size.1);
+  set_window_size(new_screen_size.0 as u32, new_screen_size.1 as u32);
+  set_window_position((original_window_position.0 as f32 + screen_size_diff.0 / 2.) as u32, (original_window_position.1 as f32 + screen_size_diff.1 / 2.) as u32);
+}
+
 #[macroquad::main("Minesweeper")]
 async fn main() {
   let settings = get_settings().await;
   let mut board = generate_board(&settings);
 
-  set_window_size(settings.cols as u32 * BUTTON_SIZE as u32, settings.rows as u32 * BUTTON_SIZE as u32);
+  resize_window(&settings);
+
   loop {
     handle_click(&mut board);
 
