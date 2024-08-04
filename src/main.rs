@@ -60,24 +60,25 @@ fn generate_board(settings: &BoardSetting) -> Board {
     let row = rng.gen_range(0..settings.rows);
     let col = rng.gen_range(0..settings.cols);
 
-    if board[col as usize][row as usize].tile_type != TileType::Mine {
-      board[col as usize][row as usize].tile_type = TileType::Mine;
+    let tile = &mut board[row as usize][col as usize];
+    if tile.tile_type != TileType::Mine {
+      tile.tile_type = TileType::Mine;
       mines_placed += 1;
     }
   }
 
   for row in 0..settings.rows as usize {
     for col in 0..settings.cols as usize {
-      if board[col][row].tile_type == TileType::Mine {
+      if board[row][col].tile_type == TileType::Mine {
         continue;
       }
 
-      let mine_count = loop_surrounding_tiles(&board, row, col)
+      let mine_count = loop_surrounding_tiles(&board, col, row)
         .filter(|(x, y)| board[*y][*x].tile_type == TileType::Mine)
         .count();
 
       if mine_count > 0 {
-        board[col as usize][row as usize].tile_type = TileType::Number(mine_count as u32);
+        board[row as usize][col as usize].tile_type = TileType::Number(mine_count as u32);
       }
     }
   }
