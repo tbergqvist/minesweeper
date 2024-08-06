@@ -1,8 +1,11 @@
 #![feature(let_chains)]
 
-use macroquad::{prelude::*, ui::{root_ui, widgets::Button}};
+use components::button::Button;
+use macroquad::prelude::*;
 use miniquad::window::{get_window_position, set_window_position, set_window_size};
 use ::rand::{thread_rng, Rng};
+
+mod components;
 
 struct BoardSetting {
   rows: u8,
@@ -46,7 +49,7 @@ const BUTTON_SIZE: f32 = 26.;
 const BUTTON_HALF_SIZE: f32 = BUTTON_SIZE / 2.;
 const PADDING: f32 = BUTTON_SIZE + 0.;
 
-fn generate_board(settings: &BoardSetting) -> Board {
+fn generate_board(settings: &BoardSetting, first_click_position: (f32, f32)) -> Board {
   let mut board = vec![vec![
     Tile {
       tile_type: TileType::Empty,
@@ -61,7 +64,7 @@ fn generate_board(settings: &BoardSetting) -> Board {
     let col = rng.gen_range(0..settings.cols);
 
     let tile = &mut board[row as usize][col as usize];
-    if tile.tile_type != TileType::Mine {
+    if tile.tile_type != TileType::Mine && (col as f32 * BUTTON_SIZE, row as f32 * BUTTON_SIZE) != first_click_position {
       tile.tile_type = TileType::Mine;
       mines_placed += 1;
     }
@@ -98,12 +101,23 @@ fn resize_window(settings: &BoardSetting) {
 #[macroquad::main("Minesweeper")]
 async fn main() {
   let settings = get_settings().await;
-  let mut board = generate_board(&settings);
-
+  let mut board = vec![
+    vec![
+      Tile {
+        tile_type: TileType::Empty,
+        state: TileState::Hidden,
+      }; settings.cols as usize]; settings.rows as usize
+  ];
+  let mut first_click = true;
   resize_window(&settings);
 
   loop {
-    handle_click(&mut board);
+    if first_click && is_mouse_button_released(MouseButton::Left) {
+      board = generate_board(&settings, mouse_position());
+      first_click = false;
+    } else {
+      handle_click(&mut board);
+    }
 
     clear_background(WHITE);
     
@@ -220,30 +234,34 @@ fn loop_surrounding_tiles(board: &Board, x: usize, y: usize) -> impl Iterator<It
   tile_pos.into_iter()
 }
 
-fn draw_difficulty_button(label: &str, y_pos: f32) -> bool {
+fn create_difficulty_button(label: &str, y_pos: f32) -> Button {
   let button_x = screen_width() / 2. - 50.;
   let button_y = screen_height() / 2. - 125. + y_pos;
   let button_size = Vec2::new(100., 50.);
-
-  Button::new(label)
-    .position(Vec2::new(button_x, button_y))
-    .size(button_size)
-    .ui(&mut root_ui())
+  
+  Button::new(label, Vec2::new(button_x, button_y), button_size)
 }
 
 async fn get_settings() -> BoardSetting {
+  let noob_button = create_difficulty_button("Noob", 0.);
+  let ok_button = create_difficulty_button("Okish", 100.);
+  let pro_button = create_difficulty_button("Pro", 200.);
+
   loop {
     clear_background(WHITE);
     
-    if draw_difficulty_button("Noob", 0.) {
+    noob_button.draw();
+    ok_button.draw();
+    pro_button.draw();
+    if noob_button.was_clicked() {
       return BoardSetting::new(9, 9, 10);
     }
 
-    if draw_difficulty_button("Okish", 100.) {
+    if ok_button.was_clicked() {
       return BoardSetting::new(16, 16, 40);
     }
 
-    if draw_difficulty_button("Pro", 200.) {
+    if pro_button.was_clicked() {
       return BoardSetting::new(16, 30, 99);
     }
 
